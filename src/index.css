@@ -18,3 +18,33 @@ body {
 * {
   scrollbar-width: thin;
 }
+
+/* ---- FLOW truck loader ---- */
+@keyframes flow-drive { from { left: 0; transform: translateX(-12%); } to { left: 100%; transform: translateX(-88%); } }
+@keyframes flow-fill { from { width: 0; } to { width: 100%; } }
+@keyframes flow-spin { to { transform: rotate(360deg); } }
+@keyframes flow-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.2px); } }
+@keyframes flow-road { to { background-position-x: -28px; } }
+@keyframes flow-dots { 0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75%, 100% { content: '...'; } }
+@keyframes flow-fade-out { to { opacity: 0; visibility: hidden; } }
+
+.flow-truck { animation: flow-drive 2400ms cubic-bezier(.45,.05,.35,1) forwards; }
+.flow-fill { animation: flow-fill 2400ms cubic-bezier(.45,.05,.35,1) forwards; }
+.flow-wheel { animation: flow-spin 0.5s linear infinite; transform-box: fill-box; transform-origin: center; }
+.flow-truck-bounce { animation: flow-bounce 0.28s ease-in-out infinite; }
+.flow-road {
+  background-image: repeating-linear-gradient(90deg, #94A3B8 0 14px, transparent 14px 28px);
+  animation: flow-road 0.5s linear infinite;
+}
+.flow-speed {
+  background-image: repeating-linear-gradient(90deg, transparent 0 40px, rgba(100,116,139,.45) 40px 70px, transparent 70px 120px);
+  mask-image: linear-gradient(90deg, transparent, #000 40%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%, transparent);
+  animation: flow-road 0.7s linear infinite;
+  background-size: 120px 2px; background-repeat: repeat-x; background-position-y: 50%;
+}
+.flow-dots::after { content: ''; display: inline-block; width: 1.2em; text-align: left; animation: flow-dots 1.2s steps(1) infinite; }
+.flow-splash-out { animation: flow-fade-out 350ms ease forwards; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

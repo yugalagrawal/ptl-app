@@ -1,30 +1,27 @@
 import { useNavigate } from 'react-router-dom'
 import { useDrawer } from '../context/DrawerContext'
+import Icon from './Icon'
 
-export default function TopBar({ title, back, menu, right }) {
+export default function TopBar({ title, subtitle, back, menu, right }) {
   const navigate = useNavigate()
   const drawer = useDrawer()
+  const btn = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-700 active:bg-slate-100 -ml-2'
   return (
-    <div className="sticky top-0 z-10 bg-brand-navy text-white px-4 py-3.5 flex items-center gap-3 shadow-soft">
+    <div className="sticky top-0 z-10 flex min-h-[56px] items-center gap-1 border-b border-slate-200 bg-white px-4">
       {back && (
-        <button
-          onClick={() => navigate(-1)}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 -ml-1"
-          aria-label="Back"
-        >
-          ←
+        <button onClick={() => navigate(-1)} className={btn} aria-label="Back">
+          <Icon name="chevronLeft" className="w-6 h-6" />
         </button>
       )}
       {menu && (
-        <button
-          onClick={() => drawer?.open()}
-          className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/10 -ml-1"
-          aria-label="Open menu"
-        >
-          ☰
+        <button onClick={() => drawer?.open()} className={btn} aria-label="Open menu">
+          <Icon name="menu" className="w-6 h-6" />
         </button>
       )}
-      <h1 className="text-base font-semibold flex-1 truncate">{title}</h1>
+      <div className="min-w-0 flex-1 py-2">
+        <h1 className="truncate text-[17px] font-semibold leading-tight text-slate-900">{title}</h1>
+        {subtitle && <p className="truncate text-xs text-slate-500">{subtitle}</p>}
+      </div>
       {right}
     </div>
   )

@@ -1,112 +1,92 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { addPackageToPickup, CONTENT_TYPES } from '../data/pickups'
+import { getPickup, scanNextPackage, PICKUP_STATUS } from '../data/prs'
 import TopBar from '../components/TopBar'
-import ScanIcon from '../components/ScanIcon'
+import { Card, Chip, ProgressBar, Button, ActionBar } from '../components/ui'
+import Icon from '../components/Icon'
 
-function randomBarcode() {
-  return `AWB${Math.floor(100000000 + Math.random() * 900000000)}`
-}
-
+// Print Labels has already resolved the full pack list (system pack IDs
+// and/or stock stickers) by this point — this screen is purely "paste the
+// label, then scan" for each pack in that list, up to the final count. The
+// docket itself was already raised back at Create Docket, so the last scan
+// just closes the pickup out (Picked Up) — nothing gets created here.
 export default function ScanPackage() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [barcode, setBarcode] = useState('')
-  const [contentType, setContentType] = useState(CONTENT_TYPES[0])
-  const [weight, setWeight] = useState('')
-  const [scanned, setScanned] = useState(false)
+  const pickup = getPickup(id)
+  // pickups are plain mutated module state, not React state — bump forces a
+  // re-render after each scan. navigate(0) would do a *real* browser reload
+  // here (it's history.go(0), not a soft re-render) and wipe the mock
+  // session/data, so it's the wrong tool for this.
+  const [, bump] = useState(0)
 
-  function simulateScan() {
-    setBarcode(randomBarcode())
-    setScanned(true)
-  }
+  if (!pickup) return null
 
-  function handleAdd(addAnother) {
-    if (!barcode || !weight) return
-    addPackageToPickup(id, { barcode, contentType, weight })
-    if (addAnother) {
-      setBarcode('')
-      setWeight('')
-      setScanned(false)
+  function handleScan() {
+    const updated = scanNextPackage(id)
+    if (updated.status === PICKUP_STATUS.PICKED_UP) {
+      navigate(`/pickup/${id}/docket`, { replace: true })
     } else {
-      navigate(`/pickup/${id}`)
+      bump((n) => n + 1)
     }
   }
 
+  const remaining = pickup.packagesCount - pickup.scannedCount
+  const scannedPacks = pickup.packs.filter((pack) => pack.scanned)
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <TopBar title="Scan Package" back />
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {!scanned ? (
-          <button
-            onClick={simulateScan}
-            className="w-full aspect-square max-h-64 rounded-2xl border-2 border-dashed border-brand-navy/30 bg-brand-navy/5 flex flex-col items-center justify-center gap-2 text-brand-navy"
-          >
-            <ScanIcon className="w-10 h-10" />
-            <span className="text-sm font-medium">Tap to scan barcode / QR</span>
-          </button>
-        ) : (
-          <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-3 flex items-center justify-between">
-            <div>
-              <p className="text-xs text-emerald-600 font-medium">Scanned</p>
-              <p className="text-sm font-semibold text-emerald-900">{barcode}</p>
-            </div>
-            <button onClick={simulateScan} className="text-xs text-emerald-700 font-medium">Rescan</button>
+      <TopBar title="Scan Stickers" back />
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-900">{pickup.client}</p>
+            <p className="text-sm font-semibold text-slate-900 tabular-nums">{pickup.scannedCount} of {pickup.packagesCount} scanned</p>
           </div>
-        )}
-
-        <div>
-          <label className="text-sm font-medium text-slate-700">Barcode / AWB no.</label>
-          <input
-            value={barcode}
-            onChange={(e) => setBarcode(e.target.value)}
-            placeholder="Enter manually if scan fails"
-            className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange"
-          />
-        </div>
-
-        <div>
-          <label className="text-sm font-medium text-slate-700">Content type</label>
-          <select
-            value={contentType}
-            onChange={(e) => setContentType(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-base bg-white focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange"
-          >
-            {CONTENT_TYPES.map((ct) => (
-              <option key={ct} value={ct}>{ct}</option>
+          {/* One segment per package, not one continuous bar — makes small
+              package counts (2-3) as legible as large ones (30+). */}
+          <div className="mt-2 flex gap-1">
+            {Array.from({ length: pickup.packagesCount }, (_, i) => (
+              <div key={i} className={`h-1.5 flex-1 rounded-full ${i < pickup.scannedCount ? 'bg-emerald-500' : 'bg-slate-200'}`} />
             ))}
-          </select>
-        </div>
+          </div>
+        </Card>
+
+        <Card className="flex flex-col items-center px-6 py-8 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+            <Icon name="scan" className="w-7 h-7" />
+          </span>
+          <p className="mt-3 text-sm font-semibold text-slate-900">Stick the label, then scan it</p>
+          <p className="mt-0.5 text-xs text-slate-500">{remaining} remaining</p>
+        </Card>
 
         <div>
-          <label className="text-sm font-medium text-slate-700">Weight (kg)</label>
-          <input
-            type="number"
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-            placeholder="0.0"
-            className="mt-1 w-full rounded-xl border border-slate-300 px-4 py-3 text-base focus:outline-none focus:ring-2 focus:ring-brand-orange/40 focus:border-brand-orange"
-          />
+          <h2 className="mb-2.5 text-[13px] font-semibold uppercase tracking-wide text-slate-500">
+            Scanned<span className="ml-1.5 text-slate-400">{scannedPacks.length}</span>
+          </h2>
+          {scannedPacks.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-300 py-8 text-center text-sm text-slate-500">
+              No stickers scanned yet
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {scannedPacks.map((pack, i) => (
+                <Card key={pack.packId} className="flex items-center gap-3 px-3.5 py-3">
+                  <span className="w-6 shrink-0 text-xs font-medium tabular-nums text-slate-400">{i + 1}</span>
+                  <p className="flex-1 text-sm font-medium text-slate-900 tabular-nums">{pack.packId}</p>
+                  <Chip tone={pack.source === 'stock' ? 'warn' : 'neutral'}>{pack.source === 'stock' ? 'Stock' : 'System'}</Chip>
+                  <Icon name="checkCircle" className="w-5 h-5 text-emerald-600" />
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="p-4 border-t border-slate-100 bg-white space-y-2">
-        <button
-          onClick={() => handleAdd(true)}
-          disabled={!barcode || !weight}
-          className="w-full bg-slate-100 text-slate-700 font-semibold py-3 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
-        >
-          Add & Scan Next
-        </button>
-        <button
-          onClick={() => handleAdd(false)}
-          disabled={!barcode || !weight}
-          className="w-full bg-brand-orange text-white font-semibold py-3 rounded-xl disabled:opacity-40 active:scale-[0.98] transition-transform"
-        >
-          Add & Done
-        </button>
-      </div>
+      <ActionBar>
+        <Button block icon="scan" onClick={handleScan}>Scan next label</Button>
+        <p className="text-center text-xs text-slate-500">Docket <span className="font-medium text-slate-700 tabular-nums">{pickup.docketNumber}</span></p>
+      </ActionBar>
     </div>
   )
 }
